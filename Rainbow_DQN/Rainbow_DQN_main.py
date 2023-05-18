@@ -21,7 +21,7 @@ class Runner:
         torch.manual_seed(seed)
 
         self.args.state_dim = 3
-        self.args.action_dim = 16
+        self.args.action_dim = 100
         self.args.episode_limit = 7  # Maximum number of steps per episode
 
         if args.use_per and args.use_n_steps:
@@ -72,7 +72,7 @@ class Runner:
                 episode_steps += 1
                 self.total_steps += 1
                 a = self.agent.choose_action(s, epsilon=self.epsilon)
-                action = hst_status[a]
+                action = hst_status_combinations[a]
                 s_, r, done = self.env.step(action, episode_steps)
 
                 if not self.args.use_noisy:  # Decay epsilon
@@ -113,7 +113,7 @@ class Runner:
             while not done:
                 episode_steps += 1
                 a = self.agent.choose_action(s, epsilon=0)
-                action = hst_status[a]
+                action = hst_status_combinations[a]
                 s_, r, done = self.env_evaluate.step(action, episode_steps)
                 episode_reward += r
                 print('choose action: ', action, 'episode_steps: ', episode_steps, 'episode_reward: ', episode_reward, 'done: ', done, 's: ', s)
@@ -187,6 +187,6 @@ if __name__ == '__main__':
 
     seed = 1
     runner = Runner(args=args, number=1, seed=seed, deterministic=True)
-    # runner.run()
-    runner.evaluate()
+    runner.run()
+    # runner.evaluate()
 

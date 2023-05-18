@@ -21,12 +21,28 @@ hourly_wind_power_available2 = [255, 833, 794, 886, 867, 886, 978, 797, 381, 381
 # hourly_wind_power_available_all = [hourly_wind_power_available, hourly_wind_power_available[::-1]]
 
 # 生成0 300 600 100 的不同组合
+# hst_status = [
+#     [0, 0], [0, 300], [0, 600], [0, 900],
+#     [300, 0], [300, 300], [300, 600], [300, 900],
+#     [600, 0], [600, 300], [600, 600], [600, 900],
+#     [900, 0], [900, 300], [900, 600], [900, 900]
+#     ]
+# 生成一个区域的HST的松弛热状态
 hst_status = [
-    [0, 0], [0, 300], [0, 600], [0, 900],
-    [300, 0], [300, 300], [300, 600], [300, 900],
-    [600, 0], [600, 300], [600, 600], [600, 900],
-    [900, 0], [900, 300], [900, 600], [900, 900]
+    [0, 100], [100, 200], [200, 300], [300, 400],
+    [400, 500], [500, 600], [600, 700], [700, 800],
+    [800, 900], [900, 1000]
     ]
+
+# Initialize an empty list to store the combinations
+hst_status_combinations = []
+
+# Loop over all statuses of the first HST
+for status1 in hst_status:
+    # Loop over all statuses of the second HST
+    for status2 in hst_status:
+        # Add the combination to the list
+        hst_status_combinations.append([status1, status2])
 
 
 # 发电机参数
