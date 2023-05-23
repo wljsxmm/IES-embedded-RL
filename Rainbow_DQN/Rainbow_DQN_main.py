@@ -20,7 +20,7 @@ class Runner:
         np.random.seed(seed)
         torch.manual_seed(seed)
 
-        self.args.state_dim = 3
+        self.args.state_dim = 72
         self.args.action_dim = 100
         self.args.episode_limit = 7  # Maximum number of steps per episode
 
@@ -97,7 +97,7 @@ class Runner:
                     self.evaluate_policy()
                     self.agent.save_model(self.algorithm, self.number, self.seed)
                 episode_reward += r
-                print('choose action: ', action, 'episode_steps: ', episode_steps, 'current_reward: ', r, 'done: ', done, 's: ', s)
+                # print('choose action: ', action, 'episode_steps: ', episode_steps, 'current_reward: ', r, 'done: ', done, 's: ', s)
             self.writer.add_scalar('train_rewards', episode_reward, global_step=self.total_steps)
         # Save reward
         np.save('./data_train/{}_number_{}_seed_{}.npy'.format(self.algorithm, self.number, self.seed), np.array(self.evaluate_rewards))
@@ -137,8 +137,8 @@ class Runner:
             while not done:
                 episode_steps += 1
                 a = self.agent.choose_action(s, epsilon=0)
-                # action = hst_status[a]
-                action = [600, 300]
+                action = hst_status[a]
+                # action = [600, 300]
                 s_, r, done = self.env_evaluate.step(action, episode_steps)
                 episode_reward += r
                 print('choose action: ', action, 'episode_steps: ', episode_steps, 'episode_reward: ', episode_reward,
@@ -186,7 +186,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     seed = 1
-    runner = Runner(args=args, number=1, seed=seed, deterministic=True)
+    runner = Runner(args=args, number=2, seed=seed, deterministic=True)
     runner.run()
     # runner.evaluate()
 

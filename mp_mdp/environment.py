@@ -4,6 +4,7 @@ from mp_mdp.economic_dispatch_gurobi import *
 from mp_mdp.parameters import *
 from mp_mdp.gurobi import *
 from mp_mdp.drawing import *
+# from mp_mdp.wind_scenarios_generator import *
 
 
 def calculate_wind_discard(results, wind_scenarios, day):
@@ -26,43 +27,58 @@ def calculate_wind_discard(results, wind_scenarios, day):
 class HST_Env(object):
     def __init__(self, mode):
         self.wind_scenarios = None
+        self.wind_scenarios_train = None
         self.mode = mode
         self.done = False
 
     def step(self, action, day):
         if self.mode == 1:
             self.done = True if day >= 7 else False
-            s = [sum(self.wind_scenarios[day - 1]), sum(self.wind_scenarios[day]), sum(self.wind_scenarios[day + 1])]
-            s_ = [sum(self.wind_scenarios[day]), sum(self.wind_scenarios[day + 1]), sum(self.wind_scenarios[day + 2])]
+            # s = [sum(self.wind_scenarios[day - 1]), sum(self.wind_scenarios[day]), sum(self.wind_scenarios[day + 1])]
+            s = [self.wind_scenarios[day-1], self.wind_scenarios[day], self.wind_scenarios[day+1]]
+            # s_ = [sum(self.wind_scenarios[day]), sum(self.wind_scenarios[day + 1]), sum(self.wind_scenarios[day + 2])]
+            # s_ = [self.wind_scenarios[day], self.wind_scenarios[day+1], self.wind_scenarios[day+2]]
+            # s_ = self.wind_scenarios[day]+self.wind_scenarios[day+1]+self.wind_scenarios[day+2]
+            s_ = np.concatenate((self.wind_scenarios[day], self.wind_scenarios[day+1], self.wind_scenarios[day+2]),axis=0)
             r, results = economic_dispatch_continuous_reward(hourly_demand, hourly_heat_demand, self.wind_scenarios,
                                                              [1, 1, 1], action)
+            r_base, results_base = economic_dispatch_continuous_gurobi(hourly_demand, hourly_heat_demand, s, [1, 1, 1])
             scenario_results = results_process(s, results)
-            wind_curtailed, wind_accommodation = calculate_wind_discard(scenario_results, self.wind_scenarios[day-1:day+2], len(s))
-            reward = wind_accommodation
+            scenario_results_base = results_process(s, results_base)
+            wind_curtailed, wind_accommodation = calculate_wind_discard(scenario_results, self.wind_scenarios[day-1:day+2], 3)
+            wind_curtailed_base, wind_accommodation_base = calculate_wind_discard(scenario_results_base, self.wind_scenarios[day-1:day+2], 3)
+            reward = wind_accommodation - wind_accommodation_base
             return s_, reward, self.done
 
         elif self.mode == 0:
             self.done = True if day >= 1 else False
-            s = [sum(self.wind_scenarios[day-1]), sum(self.wind_scenarios[day]), sum(self.wind_scenarios[day+1])]
+            # s = [sum(self.wind_scenarios[day-1]), sum(self.wind_scenarios[day]), sum(self.wind_scenarios[day+1])]
+            s = [self.wind_scenarios[day-1], self.wind_scenarios[day], self.wind_scenarios[day+1]]
             r, results = economic_dispatch_continuous_reward(hourly_demand, hourly_heat_demand, self.wind_scenarios,
                                                              [1, 1, 1], action)
             scenario_results = results_process(s, results)
-            plot_wind_power(scenario_results, self.wind_scenarios, day=3)
-            plot_area_b_multi(scenario_results, day=3)
-            wind_curtailed, wind_accommodation = calculate_wind_discard(scenario_results, self.wind_scenarios, len(s))
+            # wind_accommodation = plot_wind_power(scenario_results, self.wind_scenarios, day=3)
+            # plot_area_b_multi(scenario_results, day=3)
+            wind_curtailed, wind_accommodation = calculate_wind_discard(scenario_results, self.wind_scenarios, 3)
             reward = wind_accommodation
             return 0, reward, self.done
 
     def reset(self, episode_steps):
         if self.mode == 1:
-            self.wind_scenarios, _ = generate_wind_scenarios(hourly_wind_power_available, hourly_wind_power_available1, hourly_wind_power_available2, 10)
+            self.wind_scenarios, _ = generate_wind_scenarios(hourly_wind_power_available, hourly_wind_power_available_low, hourly_wind_power_available_high, 10)
             # 在self.wind_scenarios中随机选择10个场景组成一个episode
             self.wind_scenarios = [self.wind_scenarios[i] for i in np.random.choice(10, 10, replace=False)]
-            state = [sum(self.wind_scenarios[episode_steps]), sum(self.wind_scenarios[episode_steps + 1]), sum(self.wind_scenarios[episode_steps + 2])]
+            # state = [sum(self.wind_scenarios[episode_steps]), sum(self.wind_scenarios[episode_steps + 1]), sum(self.wind_scenarios[episode_steps + 2])]
+            state = [self.wind_scenarios[episode_steps], self.wind_scenarios[episode_steps + 1], self.wind_scenarios[episode_steps + 2]]
+            # state = self.wind_scenarios[episode_steps]+self.wind_scenarios[episode_steps + 1]+self.wind_scenarios[episode_steps + 2]
+            state = np.concatenate((self.wind_scenarios[episode_steps], self.wind_scenarios[episode_steps+1], self.wind_scenarios[episode_steps+2]),axis=0)
 
+            # state = self.wind_scenarios[episode_steps]+self.wind_scenarios[episode_steps + 1]+self.wind_scenarios[episode_steps + 2]
         elif self.mode == 0:
-            self.wind_scenarios = [hourly_wind_power_available, hourly_wind_power_available1, hourly_wind_power_available2]
-            state = [sum(self.wind_scenarios[episode_steps]), sum(self.wind_scenarios[episode_steps + 1]), sum(self.wind_scenarios[episode_steps + 2])]
+            self.wind_scenarios = [hourly_wind_power_available_low, hourly_wind_power_available, hourly_wind_power_available_high]
+            # state = [sum(self.wind_scenarios[episode_steps]), sum(self.wind_scenarios[episode_steps + 1]), sum(self.wind_scenarios[episode_steps + 2])]
+            state = [self.wind_scenarios[episode_steps], self.wind_scenarios[episode_steps + 1], self.wind_scenarios[episode_steps + 2]]
+            state = self.wind_scenarios[episode_steps]+self.wind_scenarios[episode_steps + 1]+self.wind_scenarios[episode_steps + 2]
         else:
             assert False
         return state

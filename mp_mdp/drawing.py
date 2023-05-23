@@ -1,6 +1,6 @@
 import matplotlib
+# matplotlib.use('WebAgg')
 
-matplotlib.use('WebAgg')
 import matplotlib.pyplot as plt
 from parameters import *
 import numpy as np
@@ -196,23 +196,29 @@ def plot_wind_power(results, wind_scenarios, day):
 
     # 计算出总的弃风量
     wind_power_discard = [wind_power_forecast[hour] - wind_power[hour] for hour in hours]
-    print("===========Wind Power Discard===========: ", sum(wind_power_discard))
+    # print("===========Wind Power Discard===========: ", sum(wind_power_discard))
+    # 计算总的消纳量
+    wind_power_accept = sum(wind_power)
+    # print("===========Wind Power Accept===========: ", wind_power_accept)
+    # 计算风电消纳率
+    wind_power_accept_rate = wind_power_accept / sum(wind_power_forecast)
+    # print("===========Wind Power Accept Rate===========: ", wind_power_accept_rate)
 
-    # 加密横坐标
-    plt.xticks(np.arange(1, day * len(hourly_demand) + 2, day))
-    # x轴从0开始
-    plt.xlim(1, day * len(hourly_demand) + 2)
-    plt.yticks(np.arange(0, 1000, 100))
-    plt.ylim(0, 1000)
-
-    plt.xlabel("Hour")
-    plt.ylabel("Power (MW)")
-    plt.title("Wind Power Output")
-    plt.legend()
-    plt.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
-    plt.tight_layout()
-    plt.show()
-    return wind_power_discard
+    # # 加密横坐标
+    # plt.xticks(np.arange(1, day * len(hourly_demand) + 2, day))
+    # # x轴从0开始
+    # plt.xlim(1, day * len(hourly_demand) + 2)
+    # plt.yticks(np.arange(0, 1000, 100))
+    # plt.ylim(0, 1000)
+    #
+    # plt.xlabel("Hour")
+    # plt.ylabel("Power (MW)")
+    # plt.title("Wind Power Output")
+    # plt.legend()
+    # plt.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
+    # plt.tight_layout()
+    # plt.show()
+    return wind_power_accept
 
 
 def plot_area_b_multi(results, day):
@@ -254,6 +260,7 @@ def plot_area_b_multi(results, day):
     plt.xticks(np.arange(1, day * len(hourly_demand) + 2, day))
     # x轴从0开始
     plt.xlim(1, day * len(hourly_demand) + 2)
+    plt.ylim(0, 1100)
 
     plt.xlabel("Hour")
     plt.ylabel("Heat (MW)")
