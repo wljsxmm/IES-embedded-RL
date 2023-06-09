@@ -90,6 +90,7 @@ if __name__ == "__main__":
 
     scenario_probabilities = [1, 1, 1]
 
+    '对一天进行优化'
     # obj_day1, results_day1 = economic_dispatch_continuous_gurobi(hourly_demand, hourly_heat_demand,
     #                                                              [wind_scenarios[0]], [1])
     #
@@ -110,58 +111,74 @@ if __name__ == "__main__":
                                                                         wind_scenarios, scenario_probabilities)
     scenario_results_1 = results_process(wind_scenarios, results_1)
     scenario_results_optimal = results_process(wind_scenarios, results_optimal)
-    obj_day = []
-    results_day = []
-    for day in range(3):
-        # 存在每天重置热量 偷热量的漏洞
-        obj_temp, results_temp = economic_dispatch_continuous_gurobi(hourly_demand, hourly_heat_demand,
-                                                                     [wind_scenarios[day]], [1])
-        obj_day.append(obj_temp)
-        results_day.append(results_temp)
-
-    # print('obj_day is {} and the sum is {}'.format(obj_day, sum(obj_day)))
-    # print('++++++++++++++++++++++')
-    print('obj_1 is {}'.format(obj_1))
-    print('++++++++++++++++++++++')
-    print('obj_optimal is {}'.format(obj_optimal))
 
     # plot_wind_power(scenario_results_1, wind_scenarios, day=3)
     # plot_wind_power(scenario_results_optimal, wind_scenarios, day=3)
     # plot_area_b_multi(scenario_results_1, day=3)
     # plot_area_b_multi(scenario_results_optimal, day=3)
 
-    obj, results = economic_dispatch_continuous_reward(hourly_demand, hourly_heat_demand, wind_scenarios,
-                                                       scenario_probabilities, hst_status_combinations[12])
-    obj_base, results_base = economic_dispatch_continuous_gurobi(hourly_demand, hourly_heat_demand, wind_scenarios,
-                                                                    scenario_probabilities)
-    obj1, results1 = economic_dispatch_continuous_reward(hourly_demand, hourly_heat_demand, wind_scenarios1,
-                                                         scenario_probabilities, hst_status_combinations[24])
-    obj1_base, results1_base = economic_dispatch_continuous_gurobi(hourly_demand, hourly_heat_demand, wind_scenarios1,
-                                                                     scenario_probabilities)
-    obj2, results2 = economic_dispatch_continuous_reward(hourly_demand, hourly_heat_demand, wind_scenarios2,
-                                                         scenario_probabilities, hst_status_combinations[67])
-    obj2_base, results2_base = economic_dispatch_continuous_gurobi(hourly_demand, hourly_heat_demand, wind_scenarios2,
-                                                                     scenario_probabilities)
+    chp_power1, condensing_power1 = calculate_power(scenario_results_1, day=3)
+    chp_power_optimal, condensing_power_optimal = calculate_power(scenario_results_optimal, day=3)
 
-    print(obj, obj1, obj2)
+    # plot_heat(scenario_results_1, day=3)
+    # plot_storage(scenario_results_1, day=3)
+    # plot_power(scenario_results_1, day=3)
+    # plot_heat(scenario_results_1, day=3)
 
-    scenario_results = results_process(wind_scenarios, results)
-    scenario_results_base = results_process(wind_scenarios, results_base)
-    scenario_results1 = results_process(wind_scenarios1, results1)
-    scenario_results1_base = results_process(wind_scenarios1, results1_base)
-    scenario_results2 = results_process(wind_scenarios2, results2)
-    scenario_results2_base = results_process(wind_scenarios2, results2_base)
+    print('obj_1 {}; obj_optimal {}'.format(obj_1, obj_optimal))
+    print('chp_power1 {}; chp_power_optimal {}'.format(chp_power1, chp_power_optimal))
+    print('condensing_power1 {}; condensing_power_optimal {}'.format(condensing_power1, condensing_power_optimal))
 
-    plot_wind_power(scenario_results, wind_scenarios, day=3)
-    plot_wind_power(scenario_results_base, wind_scenarios, day=3)
-    plot_wind_power(scenario_results1, wind_scenarios1, day=3)
-    plot_wind_power(scenario_results1_base, wind_scenarios1, day=3)
-    plot_wind_power(scenario_results2, wind_scenarios2, day=3)
-    plot_wind_power(scenario_results2_base, wind_scenarios2, day=3)
 
-    # plot_heat(scenario_results[0])
-    # plot_storage(scenario_results[0])
+    # obj_day = []
+    # results_day = []
+    # for day in range(3):
+    #     # 存在每天重置热量 偷热量的漏洞
+    #     obj_temp, results_temp = economic_dispatch_continuous_gurobi(hourly_demand, hourly_heat_demand,
+    #                                                                  [wind_scenarios[day]], [1])
+    #     obj_day.append(obj_temp)
+    #     results_day.append(results_temp)
 
+    # print('obj_day is {} and the sum is {}'.format(obj_day, sum(obj_day)))
+    # print('++++++++++++++++++++++')
+    # print('obj_1 is {}'.format(obj_1))
+    # print('++++++++++++++++++++++')
+    # print('obj_optimal is {}'.format(obj_optimal))
+
+
+
+    # obj, results = economic_dispatch_continuous_reward(hourly_demand, hourly_heat_demand, wind_scenarios,
+    #                                                    scenario_probabilities, hst_status_combinations[12])
+    # obj_base, results_base = economic_dispatch_continuous_gurobi(hourly_demand, hourly_heat_demand, wind_scenarios,
+    #                                                                 scenario_probabilities)
+    # obj1, results1 = economic_dispatch_continuous_reward(hourly_demand, hourly_heat_demand, wind_scenarios1,
+    #                                                      scenario_probabilities, hst_status_combinations[24])
+    # obj1_base, results1_base = economic_dispatch_continuous_gurobi(hourly_demand, hourly_heat_demand, wind_scenarios1,
+    #                                                                  scenario_probabilities)
+    # obj2, results2 = economic_dispatch_continuous_reward(hourly_demand, hourly_heat_demand, wind_scenarios2,
+    #                                                      scenario_probabilities, hst_status_combinations[67])
+    # obj2_base, results2_base = economic_dispatch_continuous_gurobi(hourly_demand, hourly_heat_demand, wind_scenarios2,
+    #                                                                  scenario_probabilities)
+
+    # print(obj, obj1, obj2)
+
+    # scenario_results = results_process(wind_scenarios, results)
+    # scenario_results_base = results_process(wind_scenarios, results_base)
+    # scenario_results1 = results_process(wind_scenarios1, results1)
+    # scenario_results1_base = results_process(wind_scenarios1, results1_base)
+    # scenario_results2 = results_process(wind_scenarios2, results2)
+    # scenario_results2_base = results_process(wind_scenarios2, results2_base)
+    #
+    # plot_wind_power(scenario_results, wind_scenarios, day=3)
+    # plot_wind_power(scenario_results_base, wind_scenarios, day=3)
+    # plot_wind_power(scenario_results1, wind_scenarios1, day=3)
+    # plot_wind_power(scenario_results1_base, wind_scenarios1, day=3)
+    # plot_wind_power(scenario_results2, wind_scenarios2, day=3)
+    # plot_wind_power(scenario_results2_base, wind_scenarios2, day=3)
+    #
+    # # plot_heat(scenario_results[0])
+    # # plot_storage(scenario_results[0])
+    #
     # plot_area_b_multi(scenario_results, day=3)
     # plot_area_b_multi(scenario_results1, day=3)
     # plot_area_b_multi(scenario_results2, day=3)

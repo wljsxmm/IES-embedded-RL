@@ -296,6 +296,10 @@ def economic_dispatch_continuous_optimal(hourly_demand, hourly_heat_demand, wind
 
 
 def economic_dispatch_continuous_gurobi(hourly_demand, hourly_heat_demand, wind_scenarios, probabilities):
+    """
+    不对储热罐的始末状态进行优化 强制约束等于初始状态（即只需要确定一个初始值）
+    """
+
     model = gp.Model("EconomicDispatchcontinuous")
     model.setParam('OutputFlag', 0)
 
@@ -543,7 +547,7 @@ def economic_dispatch_continuous_gurobi(hourly_demand, hourly_heat_demand, wind_
 
     # 检查模型是否找到了最优解
     if model.Status == gp.GRB.Status.OPTIMAL:
-        print("找到最优解")
+        # print("找到最优解")
 
         # 提取解决方案
         solution_chp = {(hour, name, idx): power_vars_chp[hour, name, idx].x for hour in range(len(hourly_demand))
