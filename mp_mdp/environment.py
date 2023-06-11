@@ -48,30 +48,34 @@ class HstEnv(object):
 
         return df
 
-    def step_uncertainty(self, action, day, max_day , draw=False):
+    def step_uncertainty(self, action, day, max_day, draw=False):
         if self.mode == 1:
             self.done = True if day >= max_day else False
 
             s = [self.state_actual[24 * (day - 1):24 * day].values, self.state_actual[24 * day:24 * (day + 1)].values,
                  self.state_actual[24 * (day + 1):24 * (day + 2)].values]
 
-            s_ = np.concatenate([self.state_obs[24 * day:24 * (day + 1)].values, self.state_obs[24 * (day + 1):24 * (day + 2)].values,
-                  self.state_obs[24 * (day + 2):24 * (day + 3)].values], axis=0)
+            s_ = np.concatenate(
+                [self.state_obs[24 * day:24 * (day + 1)].values, self.state_obs[24 * (day + 1):24 * (day + 2)].values,
+                 self.state_obs[24 * (day + 2):24 * (day + 3)].values], axis=0)
             r, results = economic_dispatch_continuous_reward(hourly_demand, hourly_heat_demand, s, [1, 1, 1], action)
             r_base, results_base = economic_dispatch_continuous_gurobi(hourly_demand, hourly_heat_demand, s, [1, 1, 1])
             scenario_results = results_process(s, results)
             scenario_results_base = results_process(s, results_base)
             wind_curtailed, wind_accommodation = calculate_wind_discard(scenario_results, s, 3)
             wind_curtailed_base, wind_accommodation_base = calculate_wind_discard(scenario_results_base, s, 3)
-            reward = wind_accommodation - wind_accommodation_base
+            reward = wind_accommodation / (wind_curtailed + wind_accommodation) - wind_accommodation_base / (
+                        wind_curtailed_base + wind_accommodation_base)
+            # reward = wind_accommodation - wind_accommodation_base
 
         elif self.mode == 0:
             self.done = True if day >= max_day else False
             s = [self.state_actual[24 * (day - 1):24 * day].values, self.state_actual[24 * day:24 * (day + 1)].values,
                  self.state_actual[24 * (day + 1):24 * (day + 2)].values]
 
-            s_ = np.concatenate([self.state_obs[24 * day:24 * (day + 1)].values, self.state_obs[24 * (day + 1):24 * (day + 2)].values,
-                  self.state_obs[24 * (day + 2):24 * (day + 3)].values], axis=0)
+            s_ = np.concatenate(
+                [self.state_obs[24 * day:24 * (day + 1)].values, self.state_obs[24 * (day + 1):24 * (day + 2)].values,
+                 self.state_obs[24 * (day + 2):24 * (day + 3)].values], axis=0)
             r, results = economic_dispatch_continuous_reward(hourly_demand, hourly_heat_demand, s, [1, 1, 1], action)
             r_base, results_base = economic_dispatch_continuous_gurobi(hourly_demand, hourly_heat_demand, s, [1, 1, 1])
             scenario_results = results_process(s, results)
@@ -83,7 +87,9 @@ class HstEnv(object):
                 # plot_area_b_multi(scenario_results_base, day=3)
             wind_curtailed, wind_accommodation = calculate_wind_discard(scenario_results, s, 3)
             wind_curtailed_base, wind_accommodation_base = calculate_wind_discard(scenario_results_base, s, 3)
-            reward = wind_accommodation - wind_accommodation_base
+            reward = wind_accommodation / (wind_curtailed + wind_accommodation) - wind_accommodation_base / (
+                        wind_curtailed_base + wind_accommodation_base)
+            # reward = wind_accommodation - wind_accommodation_base
 
 
         else:
@@ -124,7 +130,7 @@ class HstEnv(object):
             plot_area_b_multi(scenario_results, day=3)
             plot_wind_power(scenario_results, s, day=3)
             wind_curtailed, wind_accommodation = calculate_wind_discard(scenario_results, self.wind_scenarios, 3)
-            reward = wind_accommodation
+            reward = r
             return 0, reward, self.done
 
     def reset_uncertainty(self, day, fixed):
@@ -146,7 +152,7 @@ class HstEnv(object):
 
             # Get the end point 10 days later
             # TODO: 这边的10天是怎么确定的？？？ 一个episode直接设定为整个供暖季节，参考n-step那篇文章 这个其实更实际一点
-            end = start + pd.DateOffset(days=20)
+            end = start + pd.DateOffset(days=10)
             # Subtract 1 hour from the end time
             end = end - pd.DateOffset(hours=1)
 
