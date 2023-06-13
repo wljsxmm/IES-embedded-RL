@@ -3,6 +3,10 @@ from parameters import *
 
 
 def economic_dispatch_continuous_optimal(hourly_demand, hourly_heat_demand, wind_scenarios, probabilities):
+    """
+    仅要求储热罐的状态是连续的，并在总的调度周期内约束储热罐的末容量状态
+    """
+
     model = gp.Model("EconomicDispatchcontinuous")
     model.setParam('OutputFlag', 0)
 
@@ -589,6 +593,9 @@ def economic_dispatch_continuous_gurobi(hourly_demand, hourly_heat_demand, wind_
 
 def economic_dispatch_continuous_reward(hourly_demand, hourly_heat_demand, wind_scenarios, probabilities,
                                         initial_storage_heat):
+    """
+    通过强化学习给出日间储热罐的区间约束
+    """
     model = gp.Model("EconomicDispatchcontinuous")
     model.setParam('OutputFlag', 0)
 
@@ -820,18 +827,18 @@ def economic_dispatch_continuous_reward(hourly_demand, hourly_heat_demand, wind_
                                 name=f"StorageEnergy_initial_scenario{scenario_idx}_HST{name}")
                 # model.addConstr(storage_heat_vars[len(hourly_demand), name, scenario_idx] == initial_storage_heat[0],
                 #                 name=f"StorageEnergy_final_scenario{scenario_idx}_HST{name}")
-                model.addRange(storage_heat_vars[len(hourly_demand), name, scenario_idx], initial_storage_heat[0][0],
-                               initial_storage_heat[0][1],
+                model.addRange(storage_heat_vars[len(hourly_demand), name, scenario_idx], initial_storage_heat[0],
+                               initial_storage_heat[1],
                                name=f"StorageEnergy_final_scenario{scenario_idx}_HST{name}")
 
-            elif scenario_idx == 1:
-                model.addConstr(
-                    storage_heat_vars[0, name, scenario_idx] == storage_heat_vars[
-                        len(hourly_demand), name, scenario_idx - 1],
-                    name=f"StorageEnergy_initial_scenario{scenario_idx}_HST{name}")
-                model.addRange(storage_heat_vars[len(hourly_demand), name, scenario_idx], initial_storage_heat[1][0],
-                               initial_storage_heat[1][1],
-                               name=f"StorageEnergy_final_scenario{scenario_idx}_HST{name}")
+            # elif scenario_idx == 1:
+            #     model.addConstr(
+            #         storage_heat_vars[0, name, scenario_idx] == storage_heat_vars[
+            #             len(hourly_demand), name, scenario_idx - 1],
+            #         name=f"StorageEnergy_initial_scenario{scenario_idx}_HST{name}")
+            #     model.addRange(storage_heat_vars[len(hourly_demand), name, scenario_idx], initial_storage_heat[1][0],
+            #                    initial_storage_heat[1][1],
+            #                    name=f"StorageEnergy_final_scenario{scenario_idx}_HST{name}")
             else:
                 model.addConstr(
                     storage_heat_vars[0, name, scenario_idx] == storage_heat_vars[

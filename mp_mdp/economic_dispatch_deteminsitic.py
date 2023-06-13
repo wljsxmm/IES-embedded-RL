@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 #     "font.serif": ["Times"],  # specify font here
 #     "font.size": 6})  # specify font size here
 
-# TODO 1 分区  2 分析储热罐对于弃风的影响
 
 # 发电机参数
 generators_chp = {

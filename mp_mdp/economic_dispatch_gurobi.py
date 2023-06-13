@@ -5,19 +5,19 @@ from gurobi import economic_dispatch_continuous_reward
 from gurobi import economic_dispatch_continuous_optimal
 
 
-def generate_wind_scenarios(hourly_wind_power_available, hourly_wind_power_available1, hourly_wind_power_available2,
+def generate_wind_scenarios(hourly_wind_power_low, hourly_wind_power_middle, hourly_wind_power_high,
                             num_scenarios):
     scenarios = []
     probabilities = []
 
     for _ in range(num_scenarios):
-        scenario = np.random.normal(hourly_wind_power_available, scale=np.array(hourly_wind_power_available) * 0.1)
+        scenario = np.random.normal(hourly_wind_power_low, scale=np.array(hourly_wind_power_low) * 0.1)
         scenario = np.maximum(scenario, 0)  # 保证不会出现负值
         scenarios.append(scenario)
-        scenario1 = np.random.normal(hourly_wind_power_available1, scale=np.array(hourly_wind_power_available1) * 0.1)
+        scenario1 = np.random.normal(hourly_wind_power_middle, scale=np.array(hourly_wind_power_middle) * 0.1)
         scenario1 = np.maximum(scenario1, 0)  # 保证不会出现负值
         scenarios.append(scenario1)
-        scenario2 = np.random.normal(hourly_wind_power_available2, scale=np.array(hourly_wind_power_available2) * 0.1)
+        scenario2 = np.random.normal(hourly_wind_power_high, scale=np.array(hourly_wind_power_high) * 0.1)
         scenario2 = np.maximum(scenario2, 0)  # 保证不会出现负值
         scenarios.append(scenario2)
         probabilities.append(1 / (3 * num_scenarios))
@@ -25,55 +25,35 @@ def generate_wind_scenarios(hourly_wind_power_available, hourly_wind_power_avail
     return scenarios, probabilities
 
 
-def save_results_to_csv(results, filename):
-    chp_power_data = results["CHP_Power"]
-    condensing_power_data = results["Condensing_Power"]
-    chp_heat_data = results["Heat_CHP"]
-    storage_charge_data = results["Storage_Charge"]
-    storage_discharge_data = results["Storage_Discharge"]
-    storage_energy_data = results["Storage_Energy"]
-    wind_power_data = results["Wind_Power"]
-
-    data = []
-    for hour in range(len(hourly_demand)):
-        row = {"hour": hour}
-        for name in generators_chp.keys():
-            row[name] = chp_power_data[hour, name]
-            row[name + "_heat"] = chp_heat_data[hour, name]
-        for name in generators_condensing.keys():
-            row[name] = condensing_power_data[hour, name]
-        for name in thermal_storage.keys():
-            row[name] = storage_energy_data[hour, name]
-        for name in thermal_storage.keys():
-            row[name + "_charge"] = storage_charge_data[hour, name]
-        for name in thermal_storage.keys():
-            row[name + "_discharge"] = storage_discharge_data[hour, name]
-        row["Wind_Power"] = wind_power_data[hour]
-        data.append(row)
-
+def save_results_to_csv(data, filename):
     df = pd.DataFrame(data)
-    df.to_csv(filename, index=False)
+    df.to_csv(filename)
 
 
 def results_process(wind_scenarios, results):
+    hourly_demand_length = len(hourly_demand)
+    generators_chp_keys = list(generators_chp.keys())
+    generators_condensing_keys = list(generators_condensing.keys())
+    thermal_storage_keys = list(thermal_storage.keys())
+
     scenario_results = []
     for scenario_idx in range(len(wind_scenarios)):
         scenario_data = {
-            "CHP_Power": {(hour, name): results["CHP"][(hour, name, scenario_idx)] for hour in range(len(hourly_demand))
-                          for name in generators_chp.keys()},
+            "CHP_Power": {(hour, name): results["CHP"][(hour, name, scenario_idx)] for hour in range(hourly_demand_length)
+                          for name in generators_chp_keys},
             "Condensing_Power": {(hour, name): results["Condensing"][(hour, name, scenario_idx)] for hour in
-                                 range(len(hourly_demand)) for name in generators_condensing.keys()},
+                                 range(hourly_demand_length) for name in generators_condensing_keys},
             "Heat_CHP": {(hour, name): results["Heat_CHP"][(hour, name, scenario_idx)] for hour in
-                         range(len(hourly_demand)) for name in generators_chp.keys()},
+                         range(hourly_demand_length) for name in generators_chp_keys},
             "Storage_Charge": {(hour, name): results["Storage_Charge"][(hour, name, scenario_idx)] for hour in
-                               range(len(hourly_demand)) for name in thermal_storage.keys()},
+                               range(hourly_demand_length) for name in thermal_storage_keys},
             "Storage_Discharge": {(hour, name): results["Storage_Discharge"][(hour, name, scenario_idx)] for hour in
-                                  range(len(hourly_demand)) for name in thermal_storage.keys()},
+                                  range(hourly_demand_length) for name in thermal_storage_keys},
             "Storage_Energy": {(hour, name): results["Storage_Energy"][(hour, name, scenario_idx)] for hour in
-                               range(len(hourly_demand) + 1) for name in thermal_storage.keys()},
-            "Wind_Power": {(hour): results["Wind_Power"][(hour, scenario_idx)] for hour in range(len(hourly_demand))},
+                               range(hourly_demand_length + 1) for name in thermal_storage_keys},
+            "Wind_Power": {(hour): results["Wind_Power"][(hour, scenario_idx)] for hour in range(hourly_demand_length)},
         }
-        filename = f"results/scenario_{scenario_idx + 1}.csv"
+        # filename = f"results/scenario_{scenario_idx + 1}.csv"
         # save_results_to_csv(scenario_data, filename)
         scenario_results.append(scenario_data)
     return scenario_results

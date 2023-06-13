@@ -3,9 +3,13 @@ hourly_demand = [2130, 2208, 2296, 2254, 2112, 2140, 2262, 2400, 2350, 2182, 209
                  1696, 1694, 1716, 1770, 1792, 1864, 1946]
 # hourly_demand = [2130, 2208, 2296, 2254, 1500, 1040, 562, 800, 1400, 2182, 2098, 2038, 1915, 1860, 1800, 1782, 1702, 1696, 1694, 1716, 1770, 1792, 1864, 1946]
 # hourly_demand = [2130, 2208, 2296, 2254, 2112, 1640, 2262, 2400, 2350, 2182, 2098, 2038, 1915, 1860, 1800, 1782, 1702, 1696, 1694, 1716, 1770, 1792, 1864, 1946]
-
 # 生成每小时的热负荷都为900
 hourly_heat_demand = [900 for i in range(24)]
+
+
+hourly_wind_power_low = [200 for i in range(24)]
+hourly_wind_power_middle = [400 for i in range(24)]
+hourly_wind_power_high = [650 for i in range(24)]
 
 
 hourly_wind_power_available_low = [255, 233, 194, 186, 202, 190, 181, 217, 223, 235, 255, 260, 268, 270, 269, 150, 141, 128, 168, 178, 188, 200, 280, 262]
@@ -41,21 +45,29 @@ hourly_wind_power_available2 = [255, 833, 794, 886, 867, 886, 978, 797, 381, 381
 #     [800, 900], [900, 1000]
 #     ]
 
-hst_status = [
-    [0, 200], [200, 400], [400, 600], [600, 800],
-    [800, 1000], [1000, 1200], [1200, 1400], [1400, 1600],
-    [1600, 1800], [1800, 2000]
-    ]
+# hst_status = [
+#     [0, 200], [200, 400], [400, 600], [600, 800],
+#     [800, 1000], [1000, 1200], [1200, 1400], [1400, 1600],
+#     [1600, 1800], [1800, 2000]
+#     ]
+
+import numpy as np
+
+interval_size = 40
+
+# Generate the intervals
+hst_status = [(i, i + interval_size) for i in np.linspace(0, 2000, 50, endpoint=False)]
+
 
 # Initialize an empty list to store the combinations
-hst_status_combinations = []
-
-# Loop over all statuses of the first HST
-for status1 in hst_status:
-    # Loop over all statuses of the second HST
-    for status2 in hst_status:
-        # Add the combination to the list
-        hst_status_combinations.append([status1, status2])
+# hst_status_combinations = []
+#
+# # Loop over all statuses of the first HST
+# for status1 in hst_status:
+#     # Loop over all statuses of the second HST
+#     for status2 in hst_status:
+#         # Add the combination to the list
+#         hst_status_combinations.append([status1, status2])
 
 
 # 发电机参数

@@ -286,10 +286,10 @@ def plot_wind_power(results, wind_scenarios, day):
 
     # 计算出总的弃风量
     wind_power_discard = [wind_power_forecast[hour] - wind_power[hour] for hour in hours]
-    print("===========Wind Power Discard===========: ", sum(wind_power_discard))
+    print("===========Wind Power Curtailment===========: ", sum(wind_power_discard))
     # 计算总的消纳量
     wind_power_accept = sum(wind_power)
-    print("===========Wind Power Accept===========: ", wind_power_accept)
+    print("===========Wind Power Accommodation===========: ", wind_power_accept)
     # 计算风电消纳率
     wind_power_accept_rate = wind_power_accept / sum(wind_power_forecast)
     print("===========Wind Power Accept Rate===========: ", wind_power_accept_rate)
