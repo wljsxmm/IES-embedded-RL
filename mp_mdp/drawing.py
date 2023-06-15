@@ -6,6 +6,7 @@ from parameters import *
 import numpy as np
 from collections import defaultdict
 
+
 # plt.style.use(['ieee', 'grid', 'no-latex'])
 # print(plt.style.available)
 
@@ -27,6 +28,20 @@ def results_process_chp_power(results, day):
     classified_data = dict(classified_data)
     return classified_data
 
+def results_process_chp_heat(results, day):
+    # 使用 defaultdict 初始化一个空字典，使默认值为一个空列表
+    classified_data = defaultdict(list)
+    # heat_chp = results[0]["Heat_CHP"]
+
+    for day in range(day):
+        heat_chp = (results[day]["Heat_CHP"])
+        for key, value in heat_chp.items():
+            hour, generator_type = key
+            classified_data[generator_type].append((hour + 24 * day, value))
+
+    # 将 defaultdict 转换回普通字典
+    classified_data = dict(classified_data)
+    return classified_data
 
 def results_process_condensing(results, day):
     # 使用 defaultdict 初始化一个空字典，使默认值为一个空列表
@@ -40,6 +55,33 @@ def results_process_condensing(results, day):
         # 将 defaultdict 转换回普通字典
     classified_data = dict(classified_data)
     return classified_data
+
+
+def calculate_power_test(results, day):
+    """
+    计算不同机组的发电量
+    """
+    classified_data_chp = results_process_chp_power(results, day)
+    classified_data_condensing = results_process_condensing(results, day)
+    classified_data_chp_heat = results_process_chp_heat(results, day)
+
+    # 提取各发电机的出力数据
+    g1_output = [output for _, output in classified_data_chp['G1']]
+
+    g2_output = [output for _, output in classified_data_condensing['G2']]
+
+    g1_output_heat = [output for _, output in classified_data_chp_heat['G1']]
+
+    # 计算各发电机的发电量
+    g1_power = sum(g1_output)
+    g2_power = sum(g2_output)
+    g1_power_heat = sum(g1_output_heat)
+
+    # 计算总发电量
+    total_power_CHP = g1_power
+    total_power_condensing = g2_power
+    total_power_CHP_heat = g1_power_heat
+    return total_power_CHP, total_power_condensing, total_power_CHP_heat
 
 
 def calculate_power(results, day):
@@ -109,8 +151,8 @@ def plot_power(results, day):
                                           g7_output)],
             label='G8')
     plt.bar(hours, wind_power, bottom=[sum(x) for x in
-                                        zip(g1_output, g2_output, g3_output, g4_output, g5_output, g6_output,
-                                            g7_output, g8_output)],
+                                       zip(g1_output, g2_output, g3_output, g4_output, g5_output, g6_output,
+                                           g7_output, g8_output)],
             label='Wind Power')
 
     # 绘制load折线图
@@ -151,7 +193,6 @@ def plot_heat(results, day):
     hst_discharge = [a_discharge[i] + b_discharge[i] for i in range(len(a_discharge))]
     net_hst_discharge = [hst_discharge[i] - hst_charge[i] for i in range(len(hst_charge))]
 
-
     # 绘制堆叠柱状图
     plt.bar(hours, g1_heat, label="G1_heat")
     plt.bar(hours, g2_heat, bottom=g1_heat, label="G2_heat")
@@ -167,7 +208,6 @@ def plot_heat(results, day):
     #                 range(len(g1_heat))], label="Net_Storage_Discharge")
     plt.bar(hours, net_hst_discharge, label="Net_Storage_Discharge")
 
-
     # 绘制热负荷曲线
     plt.plot(hours, [heat * 2 for heat in hourly_heat_demand] * day, label="Hourly_Demand", linestyle="-.")
 
@@ -180,20 +220,6 @@ def plot_heat(results, day):
 
 
 
-def results_process_chp_heat(results, day):
-    # 使用 defaultdict 初始化一个空字典，使默认值为一个空列表
-    classified_data = defaultdict(list)
-    # heat_chp = results[0]["Heat_CHP"]
-
-    for day in range(day):
-        heat_chp = (results[day]["Heat_CHP"])
-        for key, value in heat_chp.items():
-            hour, generator_type = key
-            classified_data[generator_type].append((hour + 24 * day, value))
-
-    # 将 defaultdict 转换回普通字典
-    classified_data = dict(classified_data)
-    return classified_data
 
 
 def results_process_hst_status(results, day):
@@ -209,6 +235,7 @@ def results_process_hst_status(results, day):
     classified_data = dict(classified_data)
     return classified_data
 
+
 def results_process_hst_charge(results, day):
     classified_data = defaultdict(list)
     for day in range(day):
@@ -218,6 +245,7 @@ def results_process_hst_charge(results, day):
             classified_data[generator_type].append((hour + 24 * day, value))
     classified_data = dict(classified_data)
     return classified_data
+
 
 def results_process_hst_discharge(results, day):
     classified_data = defaultdict(list)
@@ -255,9 +283,6 @@ def plot_storage(results, day):
     # 绘制堆叠柱状图
     plt.bar(hours, a_heat, label="a_heat")
     plt.bar(hours, b_heat, bottom=a_heat, label="b_heat")
-
-
-
 
     plt.xlabel("Hour")
     plt.ylabel("Power (MW) / Energy (MWh)")
@@ -331,6 +356,15 @@ def plot_area_b_multi(results, day):
         elif day == 3:
             b_heat.pop(24)
             b_heat.pop(49)  # 删除第49个元素
+        elif day == 4:
+            b_heat.pop(24)
+            b_heat.pop(49)
+            b_heat.pop(74)
+        elif day == 5:
+            b_heat.pop(24)
+            b_heat.pop(49)
+            b_heat.pop(74)
+            b_heat.pop(99)
         else:
             print("day is wrong")
 
@@ -356,6 +390,64 @@ def plot_area_b_multi(results, day):
     plt.xlabel("Hour")
     plt.ylabel("Heat (MW)")
     plt.title("Area B Heat Output")
+    plt.legend()
+    plt.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.3)
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_area_test(results, day):
+    heat_load = [hourly_heat_demand[0] for i in range(24 * day)]
+
+    classified_data_chp = results_process_chp_heat(results, day)
+    classified_data_hst = results_process_hst_status(results, day)
+
+    g1_heat = [heat for _, heat in classified_data_chp['G1']]
+
+    b_heat = [heat for _, heat in classified_data_hst['a']]
+
+    # 删除b_heat 第24、49个元素
+    # TODO 优化根据日期来更改这边所需要删除的元素
+    if day > 1:
+        if day == 2:
+            b_heat.pop(24)  # 删除第24个元素
+        elif day == 3:
+            b_heat.pop(24)
+            b_heat.pop(49)  # 删除第49个元素
+        # elif day == 4:
+        #     b_heat.pop(24)
+        #     b_heat.pop(49)
+        #     b_heat.pop(74)
+        # elif day == 5:
+        #     b_heat.pop(24)
+        #     b_heat.pop(49)
+        #     b_heat.pop(74)
+        #     b_heat.pop(99)
+        else:
+            print("day is wrong")
+
+    # 加总各发电机的产热数据
+    area_b_heat = [g1_heat[i] for i in range(len(g1_heat))]
+
+    hours = range(day * len(hourly_demand))
+    plt.figure(figsize=(10, 6))
+
+    plt.plot(range(1, day * len(hourly_demand) + 1), [heat_load[hour] for hour in hours], label="heat_load",
+             linestyle="-.", color="black", linewidth=1)
+    plt.plot(range(1, day * len(hourly_demand) + 2), [b_heat[hour] for hour in range(day * len(hourly_demand) + 1)],
+             label="heat_storage", linestyle="--", color="black", linewidth=1, marker="v")
+    plt.plot(range(1, day * len(hourly_demand) + 1), [area_b_heat[hour] for hour in hours], label="heat_generated",
+             linestyle="-", color="black", linewidth=1, marker="^")
+
+    # 加密横坐标
+    plt.xticks(np.arange(1, day * len(hourly_demand) + 2, day))
+    # x轴从0开始
+    plt.xlim(1, day * len(hourly_demand) + 2)
+    plt.ylim(0, 1100)
+
+    plt.xlabel("Hour")
+    plt.ylabel("Heat (MW)")
+    plt.title("Area Heat Output")
     plt.legend()
     plt.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.3)
     plt.tight_layout()

@@ -3,6 +3,7 @@ from mp_mdp.drawing import *
 from gurobi import economic_dispatch_continuous_gurobi
 from gurobi import economic_dispatch_continuous_reward
 from gurobi import economic_dispatch_continuous_optimal
+from gurobi import economic_dispatch_test_optimal, economic_dispatch_test_base
 
 
 def generate_wind_scenarios(hourly_wind_power_low, hourly_wind_power_middle, hourly_wind_power_high,
@@ -11,14 +12,14 @@ def generate_wind_scenarios(hourly_wind_power_low, hourly_wind_power_middle, hou
     probabilities = []
 
     for _ in range(num_scenarios):
-        scenario = np.random.normal(hourly_wind_power_low, scale=np.array(hourly_wind_power_low) * 0.1)
-        scenario = np.maximum(scenario, 0)  # 保证不会出现负值
+        scenario = np.random.normal(hourly_wind_power_low, scale=np.array(hourly_wind_power_low) * 0.05)
+        scenario = np.maximum(scenario, 100)  # 保证不会出现负值
         scenarios.append(scenario)
-        scenario1 = np.random.normal(hourly_wind_power_middle, scale=np.array(hourly_wind_power_middle) * 0.1)
-        scenario1 = np.maximum(scenario1, 0)  # 保证不会出现负值
+        scenario1 = np.random.normal(hourly_wind_power_middle, scale=np.array(hourly_wind_power_middle) * 0.05)
+        scenario1 = np.maximum(scenario1, 100)  # 保证不会出现负值
         scenarios.append(scenario1)
-        scenario2 = np.random.normal(hourly_wind_power_high, scale=np.array(hourly_wind_power_high) * 0.1)
-        scenario2 = np.maximum(scenario2, 0)  # 保证不会出现负值
+        scenario2 = np.random.normal(hourly_wind_power_high, scale=np.array(hourly_wind_power_high) * 0.05)
+        scenario2 = np.maximum(scenario2, 100)  # 保证不会出现负值
         scenarios.append(scenario2)
         probabilities.append(1 / (3 * num_scenarios))
 
@@ -61,10 +62,10 @@ def results_process(wind_scenarios, results):
 
 if __name__ == "__main__":
     # 生成风电场景
-    # num_scenarios = 10
-    # wind_scenarios, scenario_probabilities = generate_wind_scenarios(hourly_wind_power_available, num_scenarios)
+    wind_scenarios, scenario_probabilities = generate_wind_scenarios(hourly_wind_power_available_low, hourly_wind_power_available, hourly_wind_power_available_high, 10)
+    wind_scenarios = [wind_scenarios[i] for i in np.random.choice(10, 3, replace=False)]
 
-    wind_scenarios = [hourly_wind_power_available_low, hourly_wind_power_available, hourly_wind_power_available_high]
+    # wind_scenarios = [hourly_wind_power_available_low, hourly_wind_power_available, hourly_wind_power_available_high]
     wind_scenarios1 = [[i * 1.5 for i in hourly_wind_power_available], [i * 1 for i in hourly_wind_power_available_low], [i * 1.7 for i in hourly_wind_power_available_high]]
     wind_scenarios2 = [[i * 5 for i in hourly_wind_power_available], [i * 5 for i in hourly_wind_power_available], [i * 5 for i in hourly_wind_power_available]]
 
@@ -85,20 +86,18 @@ if __name__ == "__main__":
     # plot_wind_power(scenario_results_day1, [wind_scenarios[0]], day=1)
     # plot_area_b_multi(scenario_results_day1, day=1)
 
-    obj_1, results_1 = economic_dispatch_continuous_gurobi(hourly_demand, hourly_heat_demand, wind_scenarios,
-                                                           scenario_probabilities)
-    obj_optimal, results_optimal = economic_dispatch_continuous_optimal(hourly_demand, hourly_heat_demand,
-                                                                        wind_scenarios, scenario_probabilities)
+    obj_1, results_1 = economic_dispatch_test_base(hourly_demand, hourly_heat_demand, wind_scenarios)
+    obj_optimal, results_optimal = economic_dispatch_test_optimal(hourly_demand, hourly_heat_demand, wind_scenarios)
     scenario_results_1 = results_process(wind_scenarios, results_1)
     scenario_results_optimal = results_process(wind_scenarios, results_optimal)
 
-    # plot_wind_power(scenario_results_1, wind_scenarios, day=3)
-    # plot_wind_power(scenario_results_optimal, wind_scenarios, day=3)
-    # plot_area_b_multi(scenario_results_1, day=3)
-    # plot_area_b_multi(scenario_results_optimal, day=3)
+    plot_wind_power(scenario_results_1, wind_scenarios, day=3)
+    plot_wind_power(scenario_results_optimal, wind_scenarios, day=3)
+    plot_area_test(scenario_results_1, day=3)
+    plot_area_test(scenario_results_optimal, day=3)
 
-    chp_power1, condensing_power1 = calculate_power(scenario_results_1, day=3)
-    chp_power_optimal, condensing_power_optimal = calculate_power(scenario_results_optimal, day=3)
+    chp_power1, condensing_power1, chp_heat1 = calculate_power_test(scenario_results_1, day=3)
+    chp_power_optimal, condensing_power_optimal, chp_heat_optimal = calculate_power_test(scenario_results_optimal, day=3)
 
     # plot_heat(scenario_results_1, day=3)
     # plot_storage(scenario_results_1, day=3)
@@ -108,6 +107,7 @@ if __name__ == "__main__":
     print('obj_1 {}; obj_optimal {}'.format(obj_1, obj_optimal))
     print('chp_power1 {}; chp_power_optimal {}'.format(chp_power1, chp_power_optimal))
     print('condensing_power1 {}; condensing_power_optimal {}'.format(condensing_power1, condensing_power_optimal))
+    print('chp_heat1 {}; chp_heat_optimal {}'.format(chp_heat1, chp_heat_optimal))
 
 
     # obj_day = []

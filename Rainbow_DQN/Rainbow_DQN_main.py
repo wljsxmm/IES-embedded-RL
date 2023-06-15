@@ -6,25 +6,25 @@ from mp_mdp.environment import *
 
 
 class Runner:
-    def __init__(self, args, number, seed, deterministic):
+    def __init__(self, args, number, seed, deterministic, draw):
         self.args = args
         self.number = number
         self.seed = seed
         self.deterministic = deterministic
+        self.draw = draw
 
-        env = env_make(mode=1)
-        env_evaluate = env_make(mode=0)
+        env = env_make(mode=1, day_cycle=2)
+        env_evaluate = env_make(mode=0, day_cycle=2)
 
         self.env = env
         self.env_evaluate = env_evaluate  # When evaluating the policy, we need to rebuild an environment
-        self.env.load_data()
-        self.env_evaluate.load_data()
+
         np.random.seed(seed)
         torch.manual_seed(seed)
 
-        self.args.state_dim = 72
-        self.args.action_dim = 100
-        self.args.episode_limit = 17  # Maximum number of steps per episode
+        self.args.state_dim = 48  # TODO daily的特征是不是该浓缩一下
+        self.args.action_dim = 50
+        self.args.episode_limit = 9  # Maximum number of steps per episode
 
         if args.use_per and args.use_n_steps:
             self.replay_buffer = N_Steps_Prioritized_ReplayBuffer(args)
@@ -73,10 +73,11 @@ class Runner:
             episode_reward = 0
             while not done:
                 episode_steps += 1
+
                 self.total_steps += 1
                 a = self.agent.choose_action(s, epsilon=self.epsilon)
-                action = hst_status_combinations[a]
-                # s_, r, done = self.env.step(action, episode_steps)
+                action = hst_status[a]
+                # s_, r, done = self.env.step(action, episode_steps, self.args.episode_limit, self.draw)
                 s_, r, done = self.env.step_uncertainty(action, episode_steps, self.args.episode_limit)
 
                 if not self.args.use_noisy:  # Decay epsilon
@@ -90,9 +91,9 @@ class Runner:
                 else:
                     terminal = False
 
-                # if episode_steps != self.args.episode_limit:
-                self.replay_buffer.store_transition(s, a, r, s_, terminal, done)  # Store the transition
-                s = s_
+                if episode_steps != self.args.episode_limit:
+                    self.replay_buffer.store_transition(s, a, r, s_, terminal, done)  # Store the transition
+                    s = s_
 
                 if self.replay_buffer.current_size >= self.args.batch_size:
                     self.agent.learn(self.replay_buffer, self.total_steps)
@@ -101,7 +102,7 @@ class Runner:
                     self.evaluate_policy()
                     self.agent.save_model(self.algorithm, self.number, self.seed)
                 episode_reward += r
-                # print('choose action: ', action, 'episode_steps: ', episode_steps, 'current_reward: ', r, 'done: ', done, 's: ', s)
+                # print('choose action: ', action, 'episode_steps: ', episode_steps, 'current_reward: ', r, 'done: ', done)
             self.writer.add_scalar('train_rewards', episode_reward, global_step=self.total_steps)
         # Save reward
         np.save('./data_train/{}_number_{}_seed_{}.npy'.format(self.algorithm, self.number, self.seed),
@@ -118,9 +119,11 @@ class Runner:
             done = False
             while not done:
                 episode_steps += 1
+                if episode_steps == 10:
+                    pass
                 a = self.agent.choose_action(s, epsilon=0)
-                action = hst_status_combinations[a]
-                # s_, r, done = self.env_evaluate.step(action, episode_steps)
+                action = hst_status[a]
+                # s_, r, done = self.env_evaluate.step(action, episode_steps, self.args.episode_limit, self.draw)
                 s_, r, done = self.env_evaluate.step_uncertainty(action, episode_steps, self.args.episode_limit)
                 episode_reward += r
                 # print('choose action: ', action, 'episode_steps: ', episode_steps, 'episode_reward: ', episode_reward, 'done: ', done)
@@ -129,11 +132,10 @@ class Runner:
         self.agent.net.train()  # Set the model to training mode
         evaluate_reward /= self.args.evaluate_times
         self.evaluate_rewards.append(evaluate_reward)
-        print("total_steps:{} \t evaluate_reward:{} \t epsilon：{}".format(self.total_steps, evaluate_reward,
-                                                                          self.epsilon))
+        print("total_steps:{} \t evaluate_reward:{} \t epsilon：{}".format(self.total_steps, evaluate_reward, self.epsilon))
         self.writer.add_scalar('evaluate_rewards', evaluate_reward, global_step=self.total_steps)
 
-    def evaluate(self, draw=True):
+    def evaluate(self):
         self.agent.load_model(self.algorithm, self.number, self.seed)
         evaluate_reward = 0
         self.agent.net.eval()  # Set the model to evaluation mode
@@ -141,15 +143,15 @@ class Runner:
             episode_reward = 0
             episode_steps = 0
             # s = self.env_evaluate.reset(episode_steps)
-            s = self.env_evaluate.reset_uncertainty(episode_steps)
+            s = self.env.reset_uncertainty(episode_steps, fixed=self.deterministic)
             done = False
             while not done:
                 episode_steps += 1
                 a = self.agent.choose_action(s, epsilon=0)
-                action = hst_status_combinations[a]
+                action = hst_status[a]
                 # action = [600, 300]
-                # s_, r, done = self.env_evaluate.step(action, episode_steps)
-                s_, r, done = self.env_evaluate.step_uncertainty(action, episode_steps, self.args.episode_limit, draw)
+                # s_, r, done = self.env_evaluate.step(action, episode_steps, self.args.episode_limit, self.draw)
+                s_, r, done = self.env.step_uncertainty(action, episode_steps, self.args.episode_limit, self.draw)
                 episode_reward += r
                 print('choose action: ', action, 'episode_steps: ', episode_steps, 'episode_reward: ', episode_reward,
                       'done: ', done)
@@ -162,19 +164,19 @@ class Runner:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("Hyperparameter Setting for DQN")
     parser.add_argument("--max_train_steps", type=int, default=int(2e4), help=" Maximum number of training steps")
-    parser.add_argument("--evaluate_freq", type=float, default=1e2,
+    parser.add_argument("--evaluate_freq", type=float, default=5e2,
                         help="Evaluate the policy every 'evaluate_freq' steps")
     parser.add_argument("--evaluate_times", type=float, default=1, help="Evaluate times")
 
     parser.add_argument("--buffer_capacity", type=int, default=int(1e5), help="The maximum replay-buffer capacity ")
     parser.add_argument("--batch_size", type=int, default=256, help="batch size")
-    parser.add_argument("--hidden_dim", type=int, default=256,
+    parser.add_argument("--hidden_dim", type=int, default=512,
                         help="The number of neurons in hidden layers of the neural network")
     parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate of actor")
     parser.add_argument("--gamma", type=float, default=0.99, help="Discount factor")
     parser.add_argument("--epsilon_init", type=float, default=0.8, help="Initial epsilon")
     parser.add_argument("--epsilon_min", type=float, default=0.1, help="Minimum epsilon")
-    parser.add_argument("--epsilon_decay_steps", type=int, default=int(1e4),
+    parser.add_argument("--epsilon_decay_steps", type=int, default=int(1.5e4),
                         help="How many steps before the epsilon decays to the minimum")
     parser.add_argument("--tau", type=float, default=0.005, help="soft update the target network")
     parser.add_argument("--use_soft_update", type=bool, default=True, help="Whether to use soft update")
@@ -195,11 +197,14 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     seed = 1
-    runner = Runner(args=args, number=20, seed=seed, deterministic=True)
+    runner = Runner(args=args, number=3, seed=seed, deterministic=False, draw=False)
     runner.run()
     # runner.evaluate()
 
 '''
+1: episode_limit = 7  
+
+
 10: episode_limit = 6  random choose 10 days
 
 

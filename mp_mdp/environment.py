@@ -48,12 +48,16 @@ class HstEnv(object):
         return df
 
     def step_uncertainty(self, action, day, max_day, draw=False):
+        s = []
+        for i in range(5):
+            s.append(self.state_obs[24 * (day + i -1):24 * (day + i)].values.ravel())
+        # s = [self.state_obs[24 * (day - 1):24 * day].values, self.state_obs[24 * day:24 * (day + 1)].values, self.state_obs[24 * (day + 1):24 * (day + 2)].values]
 
-        s = [self.state_obs[24 * (day - 1):24 * day].values, self.state_obs[24 * day:24 * (day + 1)].values]
-        s_ = np.concatenate([self.state_obs[24 * day:24 * (day + 1)].values, self.state_obs[24 * (day + 1):24 * (day + 2)].values], axis=0)
+        s_ = self.state_obs.iloc[24 * day: 24 * (day + 5)].values.ravel()
+        # s_2 = np.concatenate([self.state_obs[24 * day:24 * (day + 1)].values, self.state_obs[24 * (day + 1):24 * (day + 2)].values, self.state_obs[24 * (day + 2):24 * (day + 3)].values], axis=0)
 
-        r, results = economic_dispatch_continuous_reward(hourly_demand, hourly_heat_demand, s, [1, 1, 1], action)
-        r_base, results_base = economic_dispatch_continuous_gurobi(hourly_demand, hourly_heat_demand, s, [1, 1, 1])
+        r, results = economic_dispatch_continuous_reward(hourly_demand, hourly_heat_demand, s, [1, 1, 1, 1,1], action)
+        r_base, results_base = economic_dispatch_continuous_gurobi(hourly_demand, hourly_heat_demand, s, [1, 1, 1 , 1, 1])
 
         scenario_results = results_process(s, results)
         scenario_results_base = results_process(s, results_base)
@@ -61,10 +65,10 @@ class HstEnv(object):
         wind_curtailed, wind_accommodation = calculate_wind_discard(scenario_results, s, self.day_cycle)
         wind_curtailed_base, wind_accommodation_base = calculate_wind_discard(scenario_results_base, s, self.day_cycle)
 
-        optimal = False
+        optimal = True
         if optimal:
             r_optimal, results_optimal = economic_dispatch_continuous_optimal(hourly_demand, hourly_heat_demand, s,
-                                                                              [1, 1, 1])
+                                                                              [1, 1, 1,1,1])
             scenario_results_optimal = results_process(s, results_optimal)
             wind_curtailed_optimal, wind_accommodation_optimal = calculate_wind_discard(scenario_results_optimal, s,
                                                                                         self.day_cycle)
@@ -82,7 +86,9 @@ class HstEnv(object):
         reward_ratio = wind_accommodation / (wind_accommodation + wind_curtailed) - wind_accommodation_base / (
                 wind_accommodation_base + wind_curtailed_base)
 
-        self.done = day >= max_day or (self.mode == 1 and reward_ratio < 1e-4)
+        print("Day: %d, Reward: %.2f, Reward Optimal: %.2f, Reward Ratio: %.2f, Reward Optimal Ratio: %.2f" % (day, reward, reward_optimal, reward_ratio, reward_optimal_ratio))
+
+        self.done = day >= max_day or (self.mode == 1 and reward < 0)
 
         if -1e-4 <= reward_ratio <= 1e-4:
             reward_ratio = -1e4
@@ -91,18 +97,19 @@ class HstEnv(object):
         elif reward_ratio > 1e-4:
             reward_ratio *= 1e6
 
-        return s_, reward_ratio, self.done
+        return s_, reward, self.done
 
-    def step(self, action, day, max_day, draw):
+    def step(self, action, day, max_day, draw=False):
 
-        # s = [self.wind_scenarios[day - 1], self.wind_scenarios[day], self.wind_scenarios[day + 1]]
-        s = [self.wind_scenarios[day - 1], self.wind_scenarios[day]]
+        s = [self.wind_scenarios[day - 1], self.wind_scenarios[day], self.wind_scenarios[day + 1]]
+        # s = [self.wind_scenarios[day - 1], self.wind_scenarios[day]]
 
         s_ = np.concatenate(self.wind_scenarios[day:day + self.day_cycle], axis=0)
+        if len(s_) == 48:
+            print("Day: %d, s_ length: %d" % (day, len(s_)))
 
-        r, results = economic_dispatch_continuous_reward(hourly_demand, hourly_heat_demand, s, [1, 1, 1],
-                                                         action)  # TODO  probabilities [1, 1, 1] need to be changed
-        r_base, results_base = economic_dispatch_continuous_gurobi(hourly_demand, hourly_heat_demand, s, [1, 1, 1])
+        r, results = economic_dispatch_test(hourly_demand, hourly_heat_demand, s, action)  # TODO  probabilities [1, 1, 1] need to be changed
+        r_base, results_base = economic_dispatch_test_base(hourly_demand, hourly_heat_demand, s)
 
         scenario_results = results_process(s, results)
         scenario_results_base = results_process(s, results_base)
@@ -114,11 +121,11 @@ class HstEnv(object):
         reward_ratio = wind_accommodation / (wind_accommodation + wind_curtailment) - wind_accommodation_base / (
                 wind_accommodation_base + wind_curtailed_base)
 
-        optimal = False
+        optimal = 0
 
         if optimal:
-            r_optimal, results_optimal = economic_dispatch_continuous_optimal(hourly_demand, hourly_heat_demand, s,
-                                                                              [1, 1, 1])
+            r_optimal, results_optimal = economic_dispatch_test_optimal(hourly_demand, hourly_heat_demand, s)
+
             scenario_results_optimal = results_process(s, results_optimal)
             wind_curtailment_optimal, wind_accommodation_optimal = calculate_wind_discard(scenario_results_optimal, s,
                                                                                           self.day_cycle)
@@ -128,16 +135,22 @@ class HstEnv(object):
                                                wind_accommodation_base + wind_curtailed_base)
 
         if draw and self.mode == 0:
-            plot_area_b_multi(scenario_results, day=self.day_cycle)
+            plot_area_test(scenario_results, day=self.day_cycle)
             plot_wind_power(scenario_results, s, day=self.day_cycle)
 
-            plot_area_b_multi(scenario_results_base, day=self.day_cycle)
-            plot_area_b_multi(scenario_results_optimal, day=self.day_cycle)
+            plot_area_test(scenario_results_base, day=self.day_cycle)
+            plot_area_test(scenario_results_optimal, day=self.day_cycle)
             plot_wind_power(scenario_results_base, s, day=self.day_cycle)
             plot_wind_power(scenario_results_optimal, s, day=self.day_cycle)
 
         self.done = day >= max_day or (self.mode == 1 and reward_ratio < 0)
-
+        # print("Day: %d, Reward: %.2f, Reward Optimal: %.2f, Reward Ratio: %.2f, Reward Optimal Ratio: %.2f" % (day, reward, reward_optimal, reward_ratio, reward_optimal_ratio))
+        if -1e-4 <= reward_ratio <= 1e-4:
+            reward_ratio = -1e4
+        elif reward_ratio < -1e-4:
+            reward_ratio *= 1e6
+        elif reward_ratio > 1e-4:
+            reward_ratio *= 1e6
         return s_, reward_ratio, self.done
 
     def reset_uncertainty(self, day, fixed):
@@ -148,7 +161,7 @@ class HstEnv(object):
 
             start = start.normalize()
 
-            end = start + pd.DateOffset(days=10) - pd.DateOffset(hours=1)
+            end = start + pd.DateOffset(days=12) - pd.DateOffset(hours=1)
 
             self.wind_scenarios = self.data.loc[start:end]
             # print('mode 1 {}'.format((len(self.wind_scenarios))))
@@ -164,23 +177,24 @@ class HstEnv(object):
         self.state_actual = self.wind_scenarios.Measured
 
         # Choose initial state
-        state = np.concatenate(
-            (self.wind_scenarios[24 * day:24 * (day + 1)], self.wind_scenarios[24 * (day + 1):24 * (day + 2)]), axis=0)
+        state = self.state_obs.iloc[0: 120].values.ravel()
+        # state = np.concatenate(
+        #     (self.wind_scenarios[24 * day:24 * (day + 1)], self.wind_scenarios[24 * (day + 1):24 * (day + 2)], self.wind_scenarios[24 * (day + 2):24 * (day + 3)].values), axis=0)
 
-        return state[:, 0]
+        return state
 
     def reset(self, episode_steps):
         if self.mode == 1:
-            self.wind_scenarios, _ = generate_wind_scenarios(hourly_wind_power_low,
-                                                             hourly_wind_power_middle,
-                                                             hourly_wind_power_high, 10)
+            self.wind_scenarios, _ = generate_wind_scenarios(hourly_wind_power_available_low,
+                                                             hourly_wind_power_available,
+                                                             hourly_wind_power_available_high, 10)
             # Select 10 random scenarios from self.wind_scenarios to form an episode
             self.wind_scenarios = [self.wind_scenarios[i] for i in np.random.choice(10, 7, replace=False)]
 
         elif self.mode == 0:
-            self.wind_scenarios = [hourly_wind_power_low, hourly_wind_power_middle, hourly_wind_power_high,
-                                   hourly_wind_power_low, hourly_wind_power_middle, hourly_wind_power_low,
-                                   hourly_wind_power_low]
+            self.wind_scenarios = [hourly_wind_power_available_low, hourly_wind_power_available, hourly_wind_power_available_high,
+                                   hourly_wind_power_available, hourly_wind_power_available_low, hourly_wind_power_available_high,
+                                   hourly_wind_power_available_high]
         else:
             raise ValueError('Invalid mode')
 

@@ -16,20 +16,19 @@ class Runner:
         self.deterministic = deterministic
         self.draw = draw
 
-        env = env_make(mode=1, day_cycle=2)
-        env_evaluate = env_make(mode=0, day_cycle=2)
+        env = env_make(mode=1, day_cycle=3)
+        env_evaluate = env_make(mode=0, day_cycle=3)
 
         self.env = env
         self.env_evaluate = env_evaluate  # When evaluating the policy, we need to rebuild an environment
-
 
         # Set random seed
         np.random.seed(self.seed)
         torch.manual_seed(self.seed)
 
-        self.args.state_dim = 48
-        self.args.action_dim = 50
-        self.args.episode_limit = 9
+        self.args.state_dim = 72
+        self.args.action_dim = 100
+        self.args.episode_limit = 4
 
         self.replay_buffer = ReplayBuffer(args)
         self.agent = PPO_discrete_RNN(args)
@@ -51,7 +50,7 @@ class Runner:
         evaluate_num = -1  # Record the number of evaluations
         while self.total_steps < self.args.max_train_steps:
             if self.total_steps // self.args.evaluate_freq > evaluate_num:
-                self.evaluate_policy()  # Evaluate the policy every 'evaluate_freq' steps
+                # self.evaluate_policy()  # Evaluate the policy every 'evaluate_freq' steps
                 evaluate_num += 1
                 self.agent.save_model(self.number, self.seed, self.total_steps)  # Save the model
 
@@ -68,7 +67,7 @@ class Runner:
 
     def run_episode(self, ):
         episode_reward = 0
-        s = self.env.reset_uncertainty(0, fixed=self.deterministic)
+        s = self.env.reset(0)
         if self.args.use_reward_scaling:
             self.reward_scaling.reset()
         self.agent.reset_rnn_hidden()
@@ -77,8 +76,8 @@ class Runner:
                 s = self.state_norm(s)
             a, a_logprob = self.agent.choose_action(s, evaluate=False)
             v = self.agent.get_value(s)
-            action = hst_status[a]
-            s_, r, done = self.env.step_uncertainty(action, episode_step + 1, self.args.episode_limit)
+            action = combined_status[a]
+            s_, r, done = self.env.step(action, episode_step + 1, self.args.episode_limit)
             episode_reward += r
             print('choose action: ', action, 'episode_steps: ', episode_step + 1, 'current_reward: ', r, 'done: ', done)
 
@@ -107,17 +106,19 @@ class Runner:
         for _ in range(self.args.evaluate_times):
             episode_steps = 0
             episode_reward, done = 0, False
-            s = self.env_evaluate.reset_uncertainty(episode_steps, fixed=self.deterministic)
+            s = self.env_evaluate.reset(episode_steps)
+            # s = self.env_evaluate.reset_uncertainty(episode_steps, fixed=self.deterministic)
             self.agent.reset_rnn_hidden()
             while not done:
                 episode_steps += 1
-                if episode_steps == 9:
-                    print(1)
+                # if episode_steps == 9:
+                #     print(1)
                 if self.args.use_state_norm:
                     s = self.state_norm(s, update=False)
                 a, a_logprob = self.agent.choose_action(s, evaluate=True)
-                action = hst_status[a]
-                s_, r, done = self.env_evaluate.step_uncertainty(action, episode_steps, self.args.episode_limit)
+                action = combined_status[a]
+                # s_, r, done = self.env_evaluate.step_uncertainty(action, episode_steps, self.args.episode_limit-2)
+                s_, r, done = self.env_evaluate.step(action, episode_steps, self.args.episode_limit)
                 episode_reward += r
                 s = s_
             evaluate_reward += episode_reward
