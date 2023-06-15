@@ -151,7 +151,7 @@ class HstEnv(object):
             reward_ratio *= 1e6
         elif reward_ratio > 1e-4:
             reward_ratio *= 1e6
-        return s_, reward_ratio, self.done
+        return s_, reward, self.done
 
     def reset_uncertainty(self, day, fixed):
         if self.mode == 1:

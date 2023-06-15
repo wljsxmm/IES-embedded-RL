@@ -215,17 +215,20 @@ def economic_dispatch_test(hourly_demand, hourly_heat_demand, wind_scenarios, ac
             if scenario_idx == 0:
                 model.addConstr(storage_heat_vars[0, name, scenario_idx] == thermal_storage[name]["initial_heat"],
                                 name=f"StorageEnergy_initial_scenario{scenario_idx}_HST{name}")
-                model.addRange(storage_heat_vars[len(hourly_demand), name, scenario_idx], action[0][0],
-                               action[0][1],
-                               name=f"StorageEnergy_final_scenario{scenario_idx}_HST{name}")
+                # model.addRange(storage_heat_vars[len(hourly_demand), name, scenario_idx], action[0][0],
+                #                action[0][1],
+                #                name=f"StorageEnergy_final_scenario{scenario_idx}_HST{name}")
+                model.addConstr(storage_heat_vars[len(hourly_demand), name, scenario_idx] == action[0])
+
             elif scenario_idx == 1:
                 model.addConstr(
                     storage_heat_vars[0, name, scenario_idx] == storage_heat_vars[
                         len(hourly_demand), name, scenario_idx - 1],
                     name=f"StorageEnergy_initial_scenario{scenario_idx}_HST{name}")
-                model.addRange(storage_heat_vars[len(hourly_demand), name, scenario_idx], action[1][0],
-                               action[1][1],
-                               name=f"StorageEnergy_final_scenario{scenario_idx}_HST{name}")
+                # model.addRange(storage_heat_vars[len(hourly_demand), name, scenario_idx], action[1][0],
+                #                action[1][1],
+                #                name=f"StorageEnergy_final_scenario{scenario_idx}_HST{name}")
+                model.addConstr(storage_heat_vars[len(hourly_demand), name, scenario_idx] == action[1])
             else:
                 model.addConstr(
                     storage_heat_vars[0, name, scenario_idx] == storage_heat_vars[

@@ -101,6 +101,19 @@ class Runner:
 
         return episode_reward, episode_step + 1
 
+    def evaluate(self):
+        episode_step = 0
+        s = self.env_evaluate.reset(episode_step)
+        episode_reward, done = 0, False
+        while not done:
+            episode_step += 1
+            a = 1
+            action = [0, 0]
+            s_, r, done = self.env_evaluate.step(action, episode_step, self.args.episode_limit)
+            episode_reward += r
+            print('choose action: ', action, 'episode_steps: ', episode_step, 'current_reward: ', r, 'done: ', done)
+            s = s_
+
     def evaluate_policy(self, ):
         evaluate_reward = 0
         for _ in range(self.args.evaluate_times):
@@ -128,19 +141,22 @@ class Runner:
         print("total_steps:{} \t evaluate_reward:{}".format(self.total_steps, evaluate_reward))
         self.writer.add_scalar('evaluate_step_rewards', evaluate_reward, global_step=self.total_steps)
         # Save the rewards and models
-        np.save('./data_train/PPO_env_number_{}_seed_{}.npy'.format(self.number, self.seed), np.array(self.evaluate_rewards))
+        np.save('./data_train/PPO_env_number_{}_seed_{}.npy'.format(self.number, self.seed),
+                np.array(self.evaluate_rewards))
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("Hyperparameter Setting for PPO-discrete")
     parser.add_argument("--max_train_steps", type=int, default=int(1e4), help=" Maximum number of training steps")
-    parser.add_argument("--evaluate_freq", type=float, default=5e2, help="Evaluate the policy every 'evaluate_freq' steps")
+    parser.add_argument("--evaluate_freq", type=float, default=5e2,
+                        help="Evaluate the policy every 'evaluate_freq' steps")
     parser.add_argument("--save_freq", type=int, default=20, help="Save frequency")
     parser.add_argument("--evaluate_times", type=float, default=2, help="Evaluate times")
 
     parser.add_argument("--batch_size", type=int, default=16, help="Batch size")
     parser.add_argument("--mini_batch_size", type=int, default=2, help="Minibatch size")
-    parser.add_argument("--hidden_dim", type=int, default=128, help="The number of neurons in hidden layers of the neural network")
+    parser.add_argument("--hidden_dim", type=int, default=128,
+                        help="The number of neurons in hidden layers of the neural network")
     parser.add_argument("--lr", type=float, default=3e-4, help="Learning rate of actor")
     parser.add_argument("--gamma", type=float, default=0.99, help="Discount factor")
     parser.add_argument("--lamda", type=float, default=0.95, help="GAE parameter")
@@ -159,5 +175,6 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    runner = Runner(args=args, number=1, seed=1, deterministic=False, draw=False)
-    runner.run()
+    runner = Runner(args=args, number=2, seed=1, deterministic=False, draw=False)
+    # runner.run()
+    runner.evaluate()
