@@ -49,15 +49,15 @@ class HstEnv(object):
 
     def step_uncertainty(self, action, day, max_day, draw=False):
         s = []
-        for i in range(5):
+        for i in range(3):
             s.append(self.state_obs[24 * (day + i -1):24 * (day + i)].values.ravel())
         # s = [self.state_obs[24 * (day - 1):24 * day].values, self.state_obs[24 * day:24 * (day + 1)].values, self.state_obs[24 * (day + 1):24 * (day + 2)].values]
 
-        s_ = self.state_obs.iloc[24 * day: 24 * (day + 5)].values.ravel()
+        s_ = self.state_obs.iloc[24 * day: 24 * (day + 3)].values.ravel()
         # s_2 = np.concatenate([self.state_obs[24 * day:24 * (day + 1)].values, self.state_obs[24 * (day + 1):24 * (day + 2)].values, self.state_obs[24 * (day + 2):24 * (day + 3)].values], axis=0)
-
-        r, results = economic_dispatch_continuous_reward(hourly_demand, hourly_heat_demand, s, [1, 1, 1, 1,1], action)
-        r_base, results_base = economic_dispatch_continuous_gurobi(hourly_demand, hourly_heat_demand, s, [1, 1, 1 , 1, 1])
+        print('sum of s:', np.sum(s))
+        r, results = economic_dispatch_test(hourly_demand, hourly_heat_demand, s, action)
+        r_base, results_base = economic_dispatch_test_base(hourly_demand, hourly_heat_demand, s)
 
         scenario_results = results_process(s, results)
         scenario_results_base = results_process(s, results_base)
@@ -67,8 +67,8 @@ class HstEnv(object):
 
         optimal = True
         if optimal:
-            r_optimal, results_optimal = economic_dispatch_continuous_optimal(hourly_demand, hourly_heat_demand, s,
-                                                                              [1, 1, 1,1,1])
+            r_optimal, results_optimal = economic_dispatch_test_optimal(hourly_demand, hourly_heat_demand, s)
+
             scenario_results_optimal = results_process(s, results_optimal)
             wind_curtailed_optimal, wind_accommodation_optimal = calculate_wind_discard(scenario_results_optimal, s,
                                                                                         self.day_cycle)
@@ -108,7 +108,7 @@ class HstEnv(object):
         if len(s_) == 48:
             print("Day: %d, s_ length: %d" % (day, len(s_)))
 
-        r, results = economic_dispatch_test(hourly_demand, hourly_heat_demand, s, action)  # TODO  probabilities [1, 1, 1] need to be changed
+        r, results = economic_dispatch_test(hourly_demand, hourly_heat_demand, s, action)
         r_base, results_base = economic_dispatch_test_base(hourly_demand, hourly_heat_demand, s)
 
         scenario_results = results_process(s, results)
@@ -121,7 +121,7 @@ class HstEnv(object):
         reward_ratio = wind_accommodation / (wind_accommodation + wind_curtailment) - wind_accommodation_base / (
                 wind_accommodation_base + wind_curtailed_base)
 
-        optimal = 0
+        optimal = 1
 
         if optimal:
             r_optimal, results_optimal = economic_dispatch_test_optimal(hourly_demand, hourly_heat_demand, s)
@@ -144,7 +144,7 @@ class HstEnv(object):
             plot_wind_power(scenario_results_optimal, s, day=self.day_cycle)
 
         self.done = day >= max_day or (self.mode == 1 and reward_ratio < 0)
-        # print("Day: %d, Reward: %.2f, Reward Optimal: %.2f, Reward Ratio: %.2f, Reward Optimal Ratio: %.2f" % (day, reward, reward_optimal, reward_ratio, reward_optimal_ratio))
+        print("Day: %d, Reward: %.2f, Reward Optimal: %.2f, Reward Ratio: %.2f, Reward Optimal Ratio: %.2f" % (day, reward, reward_optimal, reward_ratio, reward_optimal_ratio))
         if -1e-4 <= reward_ratio <= 1e-4:
             reward_ratio = -1e4
         elif reward_ratio < -1e-4:
@@ -153,7 +153,7 @@ class HstEnv(object):
             reward_ratio *= 1e6
         return s_, reward, self.done
 
-    def reset_uncertainty(self, day, fixed):
+    def reset_uncertainty(self, day, fixed=False):
         if self.mode == 1:
             data_excluding_last_10_days = self.data.iloc[:-10 * 24]
 
@@ -161,7 +161,7 @@ class HstEnv(object):
 
             start = start.normalize()
 
-            end = start + pd.DateOffset(days=12) - pd.DateOffset(hours=1)
+            end = start + pd.DateOffset(days=10) - pd.DateOffset(hours=1)
 
             self.wind_scenarios = self.data.loc[start:end]
             # print('mode 1 {}'.format((len(self.wind_scenarios))))
@@ -177,7 +177,7 @@ class HstEnv(object):
         self.state_actual = self.wind_scenarios.Measured
 
         # Choose initial state
-        state = self.state_obs.iloc[0: 120].values.ravel()
+        state = self.state_obs.iloc[0:24 * self.day_cycle].values.ravel()
         # state = np.concatenate(
         #     (self.wind_scenarios[24 * day:24 * (day + 1)], self.wind_scenarios[24 * (day + 1):24 * (day + 2)], self.wind_scenarios[24 * (day + 2):24 * (day + 3)].values), axis=0)
 

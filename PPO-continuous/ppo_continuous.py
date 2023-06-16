@@ -216,3 +216,7 @@ class PPO_continuous():
     def save(self, filename):
         torch.save(self.actor.state_dict(), filename + "_actor.pth")
         torch.save(self.critic.state_dict(), filename + "_critic.pth")
+
+    def load(self, filename):
+        self.actor.load_state_dict(torch.load(filename + "_actor.pth"))
+        self.critic.load_state_dict(torch.load(filename + "_critic.pth"))

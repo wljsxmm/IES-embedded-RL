@@ -5,6 +5,32 @@ import numpy as np
 path = os.path.abspath(os.path.dirname(__file__))
 
 
+"""scale the data from 2022-2023 to the modified test system 1G+1CHP 100-0.3*capacity"""
+df = pd.read_csv(path + '/WindForecast_20220701-20230531.csv')
+df = df.set_index(df.columns[0])
+df.index = pd.to_datetime(df.index, dayfirst=True)
+df = df[['Day-ahead forecast [MW]', 'Measured & upscaled [MW]']]
+df.columns = ['Forecast', 'Measured']
+df = df.resample('H').mean()
+mask = df['Measured'].resample('D').apply(lambda x: x.isnull().any().any())
+df = df[~mask.reindex(df.index, method='ffill')]
+
+max_wind = 420  # 30% of capacity
+min_wind = 100
+
+df.Forecast = (df.Forecast - min(df.Forecast)) / np.ptp(df.Forecast)
+df.Forecast = df.Forecast * (max_wind - min_wind) + min_wind
+df.Measured = (df.Measured - min(df.Measured)) / np.ptp(df.Measured)
+df.Measured = df.Measured * (max_wind - min_wind) + min_wind
+
+df_test = df['2022-07-01':'2022-07-10']
+df_train = df.drop(df_test.index)
+
+df_train.to_csv('/Users/xmm/Desktop/IES-embedded-RL/PPO-continuous/data/WindForecast_20220711-20230531_train.csv', index=True)
+df_test.to_csv('/Users/xmm/Desktop/IES-embedded-RL/PPO-continuous/data/WindForecast_20220701-20220710_test.csv', index=True)
+# df.to_csv('/Users/xmm/Desktop/IES-embedded-RL/Rainbow_DQN/data' + '/WindForecast_20220701-20230531.csv', index=True)
+
+
 """scale the data from 2022-2023 to the test system"""
 df = pd.read_csv(path + '/WindForecast_20220701-20230531.csv')
 # use the first column as the row index

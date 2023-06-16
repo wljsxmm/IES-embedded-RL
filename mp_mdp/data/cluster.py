@@ -2,12 +2,13 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 
 
-# TODO 聚类后的状态转移矩阵怎么计算
+# TODO 聚类后的状态转移矩阵怎么计算 1.先做简单的一维聚类 2.再做二维聚类
 
 # Load the Excel files
-df = pd.read_csv('./data/WindForecast_20220701-20230531.csv')
+df = pd.read_csv('./WindForecast_20220701-20230531.csv')
 
 # use the first column as the row index
 df = df.set_index(df.columns[0])
